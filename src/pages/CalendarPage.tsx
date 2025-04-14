@@ -34,6 +34,22 @@ const CalendarPage = () => {
   };
   
   const selectedEntryData = selectedEntry ? entries.find(e => e.id === selectedEntry) : null;
+
+  // Create a modifiers object for the calendar
+  const datesWithEntries = getDatesWithEntries();
+  const modifiers = {
+    highlighted: datesWithEntries
+  };
+
+  // Create a modifier styles object
+  const modifiersStyles = {
+    highlighted: {
+      fontWeight: 'bold',
+      backgroundColor: 'var(--accent)',
+      color: 'var(--accent-foreground)',
+      borderRadius: '100%'
+    }
+  };
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -57,7 +73,8 @@ const CalendarPage = () => {
                     selected={date}
                     onSelect={handleDayClick}
                     className="rounded-md border"
-                    highlightedDays={getDatesWithEntries()}
+                    modifiers={modifiers}
+                    modifiersStyles={modifiersStyles}
                   />
                 </CardContent>
               </Card>
