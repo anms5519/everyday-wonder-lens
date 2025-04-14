@@ -9,6 +9,13 @@ interface WonderStoreContextProps {
   addEntry: (image: string, reflection: string, prompt: string) => void;
   getEntryById: (id: string) => WonderEntry | undefined;
   deleteEntry: (id: string) => void;
+  updateEntry: (id: string, updates: Partial<Omit<WonderEntry, 'id' | 'date'>>) => void;
+  exportEntriesToJSON: () => string;
+  importEntriesFromJSON: (jsonString: string) => boolean;
+  getRandomPrompt: () => string;
+  getEntriesByTag: (tag: string) => WonderEntry[];
+  getEntriesByMonth: (month: number, year: number) => WonderEntry[];
+  clearAllEntries: () => void;
 }
 
 const WonderStoreContext = createContext<WonderStoreContextProps | undefined>(undefined);
@@ -34,7 +41,17 @@ const WONDER_PROMPTS = [
   "What simple pleasure do you notice today?",
   "Find an unexpected contrast in your environment",
   "What geometric shape appears naturally around you?",
-  "Capture something that represents hope to you"
+  "Capture something that represents hope to you",
+  "What has a fascinating texture in your space?",
+  "Find something with an interesting history",
+  "Capture a moment of serendipity",
+  "Notice how light changes something ordinary",
+  "What natural element catches your attention?",
+  "Find beauty in repetition or patterns",
+  "Capture something that represents transformation",
+  "What everyday object has an interesting design?",
+  "Find something that tells a story without words",
+  "Capture a fleeting moment of beauty"
 ];
 
 export const WonderStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -45,7 +62,8 @@ export const WonderStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const parsed = JSON.parse(saved);
         return parsed.map((entry: any) => ({
           ...entry,
-          date: new Date(entry.date)
+          date: new Date(entry.date),
+          tags: entry.tags || []
         }));
       } catch (e) {
         console.error('Failed to parse entries:', e);
@@ -87,7 +105,8 @@ export const WonderStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       image,
       reflection,
       prompt,
-      date: new Date()
+      date: new Date(),
+      tags: extractTags(reflection)
     };
     
     setEntries(prev => [newEntry, ...prev]);
@@ -102,14 +121,103 @@ export const WonderStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setEntries(prev => prev.filter(entry => entry.id !== id));
     toast.success('Entry deleted');
   };
+
+  const updateEntry = (id: string, updates: Partial<Omit<WonderEntry, 'id' | 'date'>>) => {
+    setEntries(prev => 
+      prev.map(entry => 
+        entry.id === id 
+          ? { 
+              ...entry, 
+              ...updates,
+              tags: updates.reflection 
+                ? extractTags(updates.reflection) 
+                : entry.tags 
+            } 
+          : entry
+      )
+    );
+    toast.success('Entry updated successfully!');
+  };
+
+  const exportEntriesToJSON = () => {
+    return JSON.stringify(entries);
+  };
+
+  const importEntriesFromJSON = (jsonString: string) => {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (!Array.isArray(parsed)) {
+        toast.error('Invalid format: Import data must be an array');
+        return false;
+      }
+
+      const newEntries = parsed.map((entry: any) => ({
+        ...entry,
+        id: entry.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        date: new Date(entry.date),
+        tags: entry.tags || extractTags(entry.reflection) || []
+      }));
+
+      setEntries(prev => [...newEntries, ...prev]);
+      toast.success(`Successfully imported ${newEntries.length} entries`);
+      return true;
+    } catch (e) {
+      console.error('Failed to import entries:', e);
+      toast.error('Failed to import entries. Invalid JSON format.');
+      return false;
+    }
+  };
+
+  const getRandomPrompt = () => {
+    return WONDER_PROMPTS[Math.floor(Math.random() * WONDER_PROMPTS.length)];
+  };
+
+  const getEntriesByTag = (tag: string) => {
+    return entries.filter(entry => 
+      entry.tags && entry.tags.includes(tag.toLowerCase())
+    );
+  };
+
+  const getEntriesByMonth = (month: number, year: number) => {
+    return entries.filter(entry => {
+      const entryDate = new Date(entry.date);
+      return entryDate.getMonth() === month && entryDate.getFullYear() === year;
+    });
+  };
+
+  const clearAllEntries = () => {
+    if (window.confirm('Are you sure you want to delete ALL entries? This cannot be undone.')) {
+      setEntries([]);
+      toast.success('All entries have been deleted');
+    }
+  };
+
+  // Helper function to extract hashtags from text
+  const extractTags = (text: string): string[] => {
+    if (!text) return [];
+    
+    const hashtagRegex = /#(\w+)/g;
+    const matches = text.match(hashtagRegex);
+    
+    if (!matches) return [];
+    
+    return matches.map(tag => tag.slice(1).toLowerCase());
+  };
   
   return (
     <WonderStoreContext.Provider value={{ 
       entries, 
       dailyPrompt, 
-      addEntry, 
+      addEntry,
       getEntryById,
-      deleteEntry
+      deleteEntry,
+      updateEntry,
+      exportEntriesToJSON,
+      importEntriesFromJSON,
+      getRandomPrompt,
+      getEntriesByTag,
+      getEntriesByMonth,
+      clearAllEntries
     }}>
       {children}
     </WonderStoreContext.Provider>

@@ -1,54 +1,78 @@
 
 import React from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 
 export interface WonderEntry {
   id: string;
   image: string;
-  reflection: string;
   prompt: string;
+  reflection: string;
   date: Date;
+  tags?: string[];
 }
 
 interface WonderCardProps {
   entry: WonderEntry;
-  onClick?: () => void;
-  className?: string;
+  onClick: (id: string) => void;
+  compact?: boolean;
 }
 
-const WonderCard: React.FC<WonderCardProps> = ({ entry, onClick, className }) => {
+const WonderCard = ({ entry, onClick, compact = false }: WonderCardProps) => {
+  // Extract hashtags from reflection
+  const extractHashtags = (text: string) => {
+    const hashtagRegex = /#(\w+)/g;
+    const matches = text.match(hashtagRegex);
+    return matches ? matches.map(tag => tag.substring(1)) : [];
+  };
+  
+  const hashtags = entry.tags || extractHashtags(entry.reflection);
+  
   return (
-    <Card 
-      className={cn("overflow-hidden transition-all duration-300 hover:shadow-md cursor-pointer", className)}
-      onClick={onClick}
+    <Card
+      className="overflow-hidden hover:shadow-md transition-all cursor-pointer"
+      onClick={() => onClick(entry.id)}
     >
-      <div className="relative aspect-square overflow-hidden">
-        <img 
-          src={entry.image} 
-          alt={entry.reflection.substring(0, 20)} 
-          className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-        />
+      <div className="relative">
+        <div className="aspect-video overflow-hidden">
+          <img
+            src={entry.image}
+            alt="Wonder moment"
+            className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+          />
+        </div>
+        {!compact && (
+          <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full px-2 py-1 text-xs">
+            {format(entry.date, 'MMM d, yyyy')}
+          </div>
+        )}
       </div>
       
-      <CardHeader className="pb-2">
-        <div className="font-serif text-sm italic text-muted-foreground">
+      <CardContent className={compact ? "p-3" : "p-4"}>
+        <p className={`${compact ? "text-xs" : "text-sm"} text-muted-foreground italic mb-2 line-clamp-1`}>
           "{entry.prompt}"
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-2 pb-2">
-        <p className="line-clamp-2 text-sm">
+        </p>
+        
+        <p className={`${compact ? "text-sm" : ""} line-clamp-${compact ? "2" : "3"} mb-2`}>
           {entry.reflection}
         </p>
+        
+        {hashtags.length > 0 && !compact && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {hashtags.slice(0, 3).map(tag => (
+              <Badge key={tag} variant="secondary" className="text-xs">
+                #{tag}
+              </Badge>
+            ))}
+            {hashtags.length > 3 && (
+              <Badge variant="outline" className="text-xs">
+                +{hashtags.length - 3} more
+              </Badge>
+            )}
+          </div>
+        )}
       </CardContent>
-      
-      <CardFooter className="pt-0">
-        <p className="text-xs text-muted-foreground">
-          {formatDistanceToNow(entry.date, { addSuffix: true })}
-        </p>
-      </CardFooter>
     </Card>
   );
 };
